@@ -2,9 +2,12 @@ import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
 import morgan from 'morgan'
-import { healthRouter } from './routes/health'
-import { scanRouter } from './routes/scan'
-import { errorHandler } from './middleware/errorHandler'
+import { healthRouter }  from './routes/health'
+import { authRouter }    from './routes/auth'
+import { profileRouter } from './routes/profile'
+import { scanRouter }    from './routes/scan'
+import { stampRouter }   from './routes/stamp'
+import { errorHandler }  from './middleware/errorHandler'
 
 const app = express()
 
@@ -23,12 +26,15 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'))
 
 // ── Routes ────────────────────────────────────────────────────────────────────
-app.use('/health', healthRouter)
-app.use('/api/scan', scanRouter)
+app.use('/health',       healthRouter)
+app.use('/api/auth',     authRouter)
+app.use('/api/profile',  profileRouter)
+app.use('/api/scan',     scanRouter)
+app.use('/api/stamp',    stampRouter)
 
 // ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((_req, res) => {
-  res.status(404).json({ success: false, message: 'Route not found' })
+  res.status(404).json({ success: false, message: 'Route not found.' })
 })
 
 // ── Global error handler ──────────────────────────────────────────────────────

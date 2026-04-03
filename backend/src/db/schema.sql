@@ -1,7 +1,7 @@
 -- ══════════════════════════════════════════════════════════════════════════════
 -- GARBY — Initial Database Schema
 -- Task: T-004 | Sprint 1 | Documentation II
--- Run this in your Supabase SQL Editor to initialise the database.
+-- Run this in the Supabase SQL Editor to initialise the database.
 -- ══════════════════════════════════════════════════════════════════════════════
 
 -- ── Extensions ────────────────────────────────────────────────────────────────

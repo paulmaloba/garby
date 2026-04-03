@@ -4,17 +4,24 @@
 
 /* ── Garby Design Tokens ──────────────────────────────────────────────────── */
 :root {
-  --garby-green:  #2ECC71;
+  --garby-black:  #07081A;
+  --garby-white:  #F0F2FF;
+  --garby-cyan:   #00DFFF;
+  --garby-purple: #5B21D6;
+  --garby-green:  #00D68F;
+  --garby-red:    #FF3B5C;
+
+  /* Legacy aliases kept for compatibility */
   --garby-dark:   #1A1A2E;
   --garby-mid:    #16213E;
   --garby-accent: #0F3460;
   --garby-light:  #E8F8F0;
   --garby-grey:   #7F8C8D;
 
-  --radius-sm:  4px;
-  --radius-md:  8px;
-  --radius-lg:  16px;
-  --radius-xl:  24px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
 
   --transition-fast:   150ms ease;
   --transition-normal: 250ms ease;
@@ -22,7 +29,7 @@
 }
 
 /* ── Base ─────────────────────────────────────────────────────────────────── */
-* {
+*, *::before, *::after {
   box-sizing: border-box;
 }
 
@@ -30,88 +37,156 @@ html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 body {
   margin: 0;
-  background-color: var(--garby-dark);
-  color: #f0f0f0;
+  background-color: #1A1A2E;
+  color: #F0F2FF;
   font-family: 'Inter', system-ui, sans-serif;
   line-height: 1.6;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ── Scrollbar ────────────────────────────────────────────────────────────── */
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-track {
-  background: var(--garby-dark);
-}
-::-webkit-scrollbar-thumb {
-  background: var(--garby-accent);
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--garby-green);
-}
+::-webkit-scrollbar       { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: #1A1A2E; }
+::-webkit-scrollbar-thumb { background: #0F3460; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #2ECC71; }
 
-/* ── Focus visible ────────────────────────────────────────────────────────── */
+/* ── Focus ────────────────────────────────────────────────────────────────── */
 :focus-visible {
-  outline: 2px solid var(--garby-green);
+  outline: 2px solid #2ECC71;
   outline-offset: 3px;
   border-radius: var(--radius-sm);
 }
 
 /* ── Selection ────────────────────────────────────────────────────────────── */
 ::selection {
-  background: rgba(46, 204, 113, 0.25);
+  background: rgba(46, 204, 113, 0.2);
   color: #ffffff;
 }
 
-/* ── Utility classes ─────────────────────────────────────────────────────── */
+/* ── Page transitions ─────────────────────────────────────────────────────── */
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.page-enter {
+  animation: pageIn 0.25s ease-out forwards;
+}
+
+/* ── Component classes ────────────────────────────────────────────────────── */
 @layer components {
+
+  /* Buttons */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-6 py-3 
-           bg-garby-green text-garby-dark font-semibold rounded-lg 
-           transition-all duration-200 hover:brightness-110 
-           active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3
+           bg-garby-green text-garby-dark font-semibold rounded-lg
+           transition-all duration-200 hover:brightness-110
+           active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed
+           disabled:active:scale-100;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 px-6 py-3 
-           border border-garby-green text-garby-green font-semibold rounded-lg 
-           transition-all duration-200 hover:bg-garby-green hover:text-garby-dark 
-           active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3
+           border border-garby-green text-garby-green font-semibold rounded-lg
+           transition-all duration-200 hover:bg-garby-green hover:text-garby-dark
+           active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed
+           disabled:active:scale-100;
   }
 
+  /* Cards */
   .card {
-    @apply bg-garby-mid border border-white/10 rounded-xl p-6 
+    @apply bg-garby-mid border border-white/10 rounded-xl p-6
            transition-all duration-200;
   }
 
   .card-hover {
-    @apply card hover:border-garby-green/40 hover:shadow-lg 
-           hover:shadow-garby-green/10;
+    @apply card hover:border-garby-green/40 hover:shadow-lg
+           hover:shadow-garby-green/5 cursor-pointer;
   }
 
+  /* Badges */
   .badge-ai {
-    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full 
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full
            bg-red-500/20 text-red-400 text-sm font-semibold border border-red-500/30;
   }
 
   .badge-real {
-    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full 
-           bg-garby-green/20 text-garby-green text-sm font-semibold 
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full
+           bg-garby-green/20 text-garby-green text-sm font-semibold
            border border-garby-green/30;
   }
 
+  /* Inputs */
   .input-field {
     @apply w-full bg-garby-dark border border-white/20 rounded-lg px-4 py-3
            text-white placeholder-garby-grey transition-colors duration-200
-           focus:border-garby-green focus:outline-none;
+           focus:border-garby-green focus:outline-none focus:ring-2
+           focus:ring-garby-green/20;
   }
 
+  /* Labels */
   .section-label {
     @apply text-xs font-semibold tracking-widest text-garby-green uppercase;
+  }
+
+  /* Skeleton loader */
+  .skeleton {
+    @apply bg-white/10 animate-pulse rounded;
+  }
+
+  /* Divider */
+  .divider {
+    @apply w-full h-px bg-white/10;
+  }
+}
+
+/* ── Utility overrides ────────────────────────────────────────────────────── */
+@layer utilities {
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .scrollbar-hide {
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Glassmorphism */
+  .glass {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background: rgba(22, 33, 62, 0.8);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+
+  /* Gradient text */
+  .text-gradient {
+    background: linear-gradient(135deg, #2ECC71, #00DFFF);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Glow effects */
+  .glow-green {
+    box-shadow: 0 0 24px rgba(46, 204, 113, 0.15);
+  }
+
+  .glow-red {
+    box-shadow: 0 0 24px rgba(255, 59, 92, 0.15);
   }
 }

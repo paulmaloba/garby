@@ -1,34 +1,37 @@
 /**
  * detection.service.ts — Detection pipeline orchestrator
- * Task: T-018 (pipeline) + T-019 (fallback) | Sprint 1 Days 9–10
+ * Sprint 2
  *
- * Flow:
- *   imageUrl → detectWithHive → [if error/timeout] → detectWithSightengine → DetectionResult
+ * Sightengine is the confirmed primary provider — reliable, fast, working.
+ * Hive is commented out pending API key resolution during fine-tuning phase.
+ * When Hive is resolved, uncomment the primary block and demote Sightengine to fallback.
  */
 
-import { detectWithHive, type DetectionResult } from './hive.service'
 import { detectWithSightengine } from './sightengine.service'
+// import { detectWithHive } from './hive.service'  // Re-enable during fine-tuning phase
+import type { DetectionResult } from './hive.service'
 
-/**
- * runDetection — Main entry point for the detection pipeline.
- * Tries Hive first; falls back to Sightengine on any failure.
- */
-export async function runDetection(imageUrl: string): Promise<DetectionResult> {
+export async function runDetection(
+  imageBuffer: Buffer,
+  mimeType: string,
+  imageUrl: string
+): Promise<DetectionResult> {
+  // ── TODO (Fine-tuning phase): Re-enable Hive as primary ───────────────────
+  // try {
+  //   const result = await detectWithHive(imageBuffer, mimeType)
+  //   return result
+  // } catch (hiveError) {
+  //   console.warn(`[Detection] Hive failed: ${(hiveError as Error).message}`)
+  // }
+
+  // ── Primary: Sightengine ───────────────────────────────────────────────────
   try {
-    console.log(`[Detection] Starting Hive scan for: ${imageUrl}`)
-    const result = await detectWithHive(imageUrl)
-    console.log(`[Detection] Hive result: ${result.classification} (${(result.confidence * 100).toFixed(1)}%) in ${result.duration_ms}ms`)
+    console.log('[Detection] Starting Sightengine scan')
+    const result = await detectWithSightengine(imageBuffer, mimeType, imageUrl)
+    console.log(`[Detection] Sightengine: ${result.classification} (${(result.confidence * 100).toFixed(1)}%) in ${result.duration_ms}ms`)
     return result
-  } catch (hiveError) {
-    console.warn(`[Detection] Hive failed — falling back to Sightengine. Reason: ${(hiveError as Error).message}`)
-
-    try {
-      const result = await detectWithSightengine(imageUrl)
-      console.log(`[Detection] Sightengine result: ${result.classification} (${(result.confidence * 100).toFixed(1)}%) in ${result.duration_ms}ms`)
-      return result
-    } catch (sightengineError) {
-      console.error('[Detection] Both providers failed.', sightengineError)
-      throw new Error('Detection failed: all providers unavailable. Please try again.')
-    }
+  } catch (err) {
+    console.error('[Detection] Sightengine failed:', err)
+    throw new Error('Detection failed. Please try again.')
   }
 }

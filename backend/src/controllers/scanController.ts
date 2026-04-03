@@ -1,47 +1,133 @@
+/**
+ * scanController.ts
+ * Task: T-039 — Backend Video Upload Endpoint
+ * Task: T-041 — Frame Detection Pipeline
+ * Sprint 2
+ */
+
 import { Request, Response, NextFunction } from 'express'
 import { v4 as uuidv4 } from 'uuid'
+import { uploadImageToS3, deleteFromS3 } from '../services/storage.service'
+import { runDetection } from '../services/detection.service'
+import { runVideoDetection } from '../services/video.service'
+import { createClient } from '@supabase/supabase-js'
+import { ACCEPTED_VIDEO_TYPES, getMaxSize } from '../middleware/upload'
 import type { ScanRecord } from '../types'
 
-/**
- * POST /api/scan
- * T-014 — Backend Upload Endpoint (scaffold)
- * Full implementation wired in Day 8 of Sprint 1.
- *
- * Currently returns a mock pending scan job for scaffolding purposes.
- * Will be replaced with: multipart upload → S3 storage → Hive API call → DB persistence.
- */
+const supabase = createClient(
+  process.env.SUPABASE_URL ?? '',
+  process.env.SUPABASE_SERVICE_KEY ?? ''
+)
+
 export async function createScan(
-  _req: Request,
+  req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> {
+  const scanId = uuidv4()
+  let s3Key: string | null = null
+
   try {
-    // TODO T-014: parse multipart/form-data with multer
-    // TODO T-015: upload to S3/R2, get CDN URL
-    // TODO T-016: check rate limit for user tier
-    // TODO T-017/T-018: call Hive detection API
-    // TODO T-020: persist scan record to DB
+    if (!req.file) {
+      res.status(400).json({
+        success: false,
+        message: 'No file provided. Send multipart/form-data with field name "image".',
+        code:    'NO_FILE',
+      })
+      return
+    }
 
-    const scanId = uuidv4()
+    const { buffer, mimetype, originalname, size } = req.file
+    const isVideo   = ACCEPTED_VIDEO_TYPES.includes(mimetype)
+    const mediaType = isVideo ? 'video' : 'image'
+    const maxSize   = getMaxSize(mimetype)
 
-    res.status(202).json({
-      success: true,
-      data: {
-        id: scanId,
-        status: 'pending',
-        message: 'Scan job created. Poll GET /api/scan/:id for result.',
-      },
+    if (size > maxSize) {
+      res.status(400).json({
+        success: false,
+        message: `File too large. Maximum for ${mediaType} is ${maxSize / 1024 / 1024}MB.`,
+        code:    'FILE_TOO_LARGE',
+      })
+      return
+    }
+
+    console.log(`[Scan] New ${mediaType} scan ${scanId} — ${originalname} (${(size / 1024).toFixed(1)}KB)`)
+
+    // Upload to R2
+    const upload = await uploadImageToS3(buffer, mimetype, originalname)
+    s3Key = upload.key
+
+    // Persist as processing
+    const userId    = req.user?.id ?? null
+    const sessionId = (req.headers['x-session-id'] as string) ?? null
+
+    await supabase.from('scans').insert({
+      id:         scanId,
+      user_id:    userId,
+      session_id: sessionId,
+      image_url:  upload.url,
+      media_type: mediaType,
+      status:     'processing',
     })
-  } catch (error) {
-    next(error)
+
+    if (isVideo) {
+      // ── Video pipeline ─────────────────────────────────────────────────────
+      const result = await runVideoDetection(buffer, mimetype, upload.url)
+
+      await supabase.from('scans').update({
+        classification:   result.classification,
+        confidence:       result.confidence,
+        provider:         result.provider,
+        signals:          result.signals,
+        scan_duration_ms: result.duration_ms,
+        duration_seconds: result.duration_seconds,
+        frames_analysed:  result.frames_analysed,
+        frame_results:    result.frame_results,
+        status:           'complete',
+        scanned_at:       new Date().toISOString(),
+      }).eq('id', scanId)
+
+      console.log(`[Scan] Video ${scanId} complete — ${result.classification} (${result.frames_analysed} frames)`)
+      res.status(200).json({
+        success: true,
+        data: {
+          id: scanId, user_id: userId, image_url: upload.url,
+          media_type: 'video', ...result,
+          scanned_at: new Date().toISOString(), status: 'complete',
+        },
+      })
+    } else {
+      // ── Image pipeline ─────────────────────────────────────────────────────
+      const result = await runDetection(buffer, mimetype, upload.url)
+
+      await supabase.from('scans').update({
+        classification:   result.classification,
+        confidence:       result.confidence,
+        provider:         result.provider,
+        signals:          result.signals,
+        scan_duration_ms: result.duration_ms,
+        status:           'complete',
+        scanned_at:       new Date().toISOString(),
+      }).eq('id', scanId)
+
+      console.log(`[Scan] Image ${scanId} complete — ${result.classification} ${(result.confidence * 100).toFixed(1)}%`)
+      res.status(200).json({
+        success: true,
+        data: {
+          id: scanId, user_id: userId ?? undefined,
+          image_url: upload.url, media_type: 'image', ...result,
+          scanned_at: new Date().toISOString(), status: 'complete',
+        },
+      })
+    }
+
+  } catch (err) {
+    if (s3Key) deleteFromS3(s3Key).catch(() => {})
+    supabase.from('scans').update({ status: 'failed' }).eq('id', scanId).then(() => {})
+    next(err)
   }
 }
 
-/**
- * GET /api/scan/:id
- * T-021 — Async Processing & Status Polling (scaffold)
- * Full implementation wired in Day 11 of Sprint 1.
- */
 export async function getScanById(
   req: Request,
   res: Response,
@@ -50,20 +136,19 @@ export async function getScanById(
   try {
     const { id } = req.params
 
-    // TODO T-021: query DB for scan by id and return real result
+    const { data, error } = await supabase
+      .from('scans')
+      .select('id, user_id, image_url, media_type, classification, confidence, provider, signals, scan_duration_ms, duration_seconds, frames_analysed, frame_results, status, scanned_at, created_at')
+      .eq('id', id)
+      .single()
 
-    // Mock response for scaffold — will be replaced
-    const mockScan: Partial<ScanRecord> = {
-      id,
-      status: 'pending',
-      scanned_at: new Date().toISOString(),
+    if (error || !data) {
+      res.status(404).json({ success: false, message: 'Scan not found.', code: 'SCAN_NOT_FOUND' })
+      return
     }
 
-    res.status(200).json({
-      success: true,
-      data: mockScan,
-    })
-  } catch (error) {
-    next(error)
+    res.status(200).json({ success: true, data })
+  } catch (err) {
+    next(err)
   }
 }

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Welcome to Garby</title>
+</head>
+<body style="margin:0;padding:0;background-color:#07081A;font-family:system-ui,-apple-system,sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#07081A;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="560" cellpadding="0" cellspacing="0"
+          style="background:#16213E;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:#1A1A2E;padding:28px 40px;border-bottom:2px solid #2ECC71;">
+              <table cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding-right:10px;">
+                    <!-- Garby logo mark (inline SVG as data URI for email clients) -->
+                    <div style="width:28px;height:28px;display:inline-block;vertical-align:middle;">
+                      <!-- fallback text -->
+                    </div>
+                  </td>
+                  <td style="font-size:18px;font-weight:700;color:#F0F2FF;letter-spacing:-0.5px;vertical-align:middle;">
+                    GARBY
+                  </td>
+                  <td style="padding-left:10px;vertical-align:middle;">
+                    <span style="font-size:10px;color:#7F8C8D;font-weight:500;letter-spacing:2px;text-transform:uppercase;">
+                      AI CONTENT AUTHENTICITY
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px 40px 32px;">
+
+              <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:#2ECC71;
+                letter-spacing:3px;text-transform:uppercase;">
+                Welcome
+              </p>
+
+              <h1 style="margin:0 0 20px;font-size:28px;font-weight:700;color:#F0F2FF;line-height:1.3;">
+                You're in, {{ name }}.
+              </h1>
+
+              <p style="margin:0 0 24px;font-size:15px;color:#7F8C8D;line-height:1.7;">
+                Your Garby account is ready. You're on the <strong style="color:#F0F2FF;">Free plan</strong>
+                — 20 scans per month to detect AI-generated images and videos.
+              </p>
+
+              <!-- What you can do -->
+              <table width="100%" cellpadding="0" cellspacing="0"
+                style="background:rgba(46,204,113,0.05);border:1px solid rgba(46,204,113,0.2);
+                border-radius:12px;margin-bottom:28px;">
+                <tr>
+                  <td style="padding:20px 24px;">
+                    <p style="margin:0 0 14px;font-size:13px;font-weight:600;color:#F0F2FF;">
+                      What you can do right now:
+                    </p>
+                    <table cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td style="padding:5px 0;font-size:14px;color:#7F8C8D;">
+                          ✓ &nbsp; Scan any image for AI generation
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding:5px 0;font-size:14px;color:#7F8C8D;">
+                          ✓ &nbsp; Scan videos up to 60 seconds (Beta)
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding:5px 0;font-size:14px;color:#7F8C8D;">
+                          ✓ &nbsp; Download a Garby Stamp for your verified images
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding:5px 0;font-size:14px;color:#7F8C8D;">
+                          ✓ &nbsp; Share scan results with a unique link
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- CTA -->
+              <table cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="border-radius:8px;background:#2ECC71;">
+                    <a href="{{ scan_url }}"
+                      style="display:inline-block;padding:14px 32px;font-size:15px;
+                      font-weight:600;color:#07081A;text-decoration:none;border-radius:8px;">
+                      Scan your first image →
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+            </td>
+          </tr>
+
+          <!-- Divider -->
+          <tr>
+            <td style="padding:0 40px;">
+              <div style="height:1px;background:rgba(255,255,255,0.06);"></div>
+            </td>
+          </tr>
+
+          <!-- Quote -->
+          <tr>
+            <td style="padding:28px 40px;">
+              <p style="margin:0;font-size:13px;font-style:italic;color:#3A3A5C;line-height:1.7;">
+                "Drawing a definitive line between content born from a human heart
+                and content generated by bits."
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#1A1A2E;padding:20px 40px;border-top:1px solid rgba(255,255,255,0.06);">
+              <p style="margin:0;font-size:12px;color:#3A3A5C;line-height:1.6;">
+                You're receiving this because you signed up at garby.app.
+                &nbsp;·&nbsp;
+                <a href="{{ unsubscribe_url }}" style="color:#3A3A5C;">Unsubscribe</a>
+                <br/>
+                © 2026 Garby. All rights reserved.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
