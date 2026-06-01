@@ -8,7 +8,7 @@
  */
 
 import { useState, useRef, useCallback, type DragEvent, type ChangeEvent } from 'react'
-import Button from '@/components/ui/Button'
+// import Button from '@/components/ui/Button'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
