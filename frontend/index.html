@@ -22,9 +22,41 @@
     />
 
     <title>Garby — AI Content Authenticity</title>
+
+        <!-- PWA manifest -->
+    <link rel="manifest" href="/manifest.json"/>
+
+    <!-- Theme colour (browser chrome, Android task switcher) -->
+    <meta name="theme-color" content="#07081A"/>
+
+    <!-- iOS PWA support -->
+    <meta name="apple-mobile-web-app-capable" content="yes"/>
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+    <meta name="apple-mobile-web-app-title" content="Garby"/>
+    <link rel="apple-touch-icon" href="/icons/icon-192.png"/>
+
+    <!-- Splash screen colours for iOS -->
+    <meta name="msapplication-TileColor" content="#07081A"/>
+    <meta name="msapplication-TileImage" content="/icons/icon-144.png"/>
+
+    <!-- Open Graph (WhatsApp/Twitter previews when sharing scan links) -->
+    <meta property="og:title"       content="Garby — AI Content Detector"/>
+    <meta property="og:description" content="Detect AI-generated images and videos instantly."/>
+    <meta property="og:type"        content="website"/>
+    <meta property="og:image"       content="/icons/icon-512.png"/>
+    <meta name="twitter:card"       content="summary"/>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            .then(reg => console.log('[Garby] SW registered:', reg.scope))
+            .catch(err => console.warn('[Garby] SW registration failed:', err))
+        })
+      }
+    </script>
   </body>
 </html>

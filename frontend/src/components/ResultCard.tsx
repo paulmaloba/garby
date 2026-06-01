@@ -1,7 +1,6 @@
 /**
- * ResultCard.tsx
- * Task: T-023 — Result Card Component
- * Task: T-033 — Fixed image preview (uses MediaPreview with fallback)
+ * ResultCard.tsx — Sprint 2 v3
+ * Fixed: provider display, scan time, classification normalisation
  */
 
 import { useEffect, useState } from 'react'
@@ -9,24 +8,15 @@ import type { Classification } from '@/types/scan'
 import MediaPreview from '@/components/MediaPreview'
 
 interface ResultCardProps {
-  classification: Classification
-  confidence:     number
-  provider:       string
-  scanDurationMs: number
-  imageUrl:       string
-  mediaType?:     string
+  classification:  Classification | string
+  confidence:      number
+  provider:        string
+  scanDurationMs?: number
+  imageUrl:        string
+  mediaType?:      string
 }
 
-const VERDICT: Record<Classification, {
-  label:       string
-  sublabel:    string
-  barColour:   string
-  badgeBg:     string
-  badgeBorder: string
-  badgeText:   string
-  glowColour:  string
-  icon:        string
-}> = {
+const VERDICT = {
   AI_GENERATED: {
     label:       'AI Generated',
     sublabel:    'This image shows strong indicators of synthetic generation.',
@@ -34,7 +24,7 @@ const VERDICT: Record<Classification, {
     badgeBg:     'bg-red-500/20',
     badgeBorder: 'border-red-500/40',
     badgeText:   'text-red-400',
-    glowColour:  'shadow-red-500/20',
+    glowClass:   'shadow-red-500/20',
     icon:        '⚠',
   },
   REAL: {
@@ -44,26 +34,46 @@ const VERDICT: Record<Classification, {
     badgeBg:     'bg-garby-green/20',
     badgeBorder: 'border-garby-green/40',
     badgeText:   'text-garby-green',
-    glowColour:  'shadow-garby-green/20',
+    glowClass:   'shadow-garby-green/20',
     icon:        '✓',
   },
   UNCERTAIN: {
     label:       'Uncertain',
-    sublabel:    'Detection confidence is too low to make a definitive call.',
+    sublabel:    'Detection confidence is low — result is inconclusive.',
     barColour:   'bg-yellow-500',
     badgeBg:     'bg-yellow-500/20',
     badgeBorder: 'border-yellow-500/40',
     badgeText:   'text-yellow-400',
-    glowColour:  'shadow-yellow-500/20',
+    glowClass:   'shadow-yellow-500/20',
     icon:        '?',
   },
+}
+
+// Map raw provider string to a human-readable label
+function providerLabel(provider: string): string {
+  const p = (provider ?? '').toLowerCase()
+  if (p.includes('garby') && p.includes('sightengine')) return 'Garby Engine + Sightengine'
+  if (p.includes('garby'))       return 'Garby Engine'
+  if (p.includes('sightengine')) return 'Sightengine'
+  if (p.includes('hive'))        return 'Hive AI'
+  return provider ?? 'Unknown'
+}
+
+// Normalise any classification string to one of the three valid keys
+function normalise(cls: string): keyof typeof VERDICT {
+  const u = String(cls ?? '').toUpperCase().replace(/-/g, '_').replace(/ /g, '_')
+  if (u.includes('AI') || u.includes('GENERATED')) return 'AI_GENERATED'
+  if (u === 'REAL' || u.includes('LIKELY_REAL'))   return 'REAL'
+  return 'UNCERTAIN'
 }
 
 export default function ResultCard({
   classification, confidence, provider, scanDurationMs, imageUrl, mediaType = 'image',
 }: ResultCardProps) {
-  const verdict = VERDICT[classification]
-  const pct     = Math.round(confidence * 100)
+  const key     = normalise(String(classification))
+  const verdict = VERDICT[key]
+  const pct     = Math.round(Math.min(1, Math.max(0, confidence ?? 0)) * 100)
+  const durSec  = ((scanDurationMs ?? 0) / 1000).toFixed(2)
   const [barWidth, setBarWidth] = useState(0)
 
   useEffect(() => {
@@ -72,7 +82,7 @@ export default function ResultCard({
   }, [pct])
 
   return (
-    <div className={`card border animate-slide-up shadow-xl ${verdict.glowColour} ${verdict.badgeBorder}`}>
+    <div className={`card border animate-slide-up shadow-xl ${verdict.glowClass} ${verdict.badgeBorder}`}>
       <div className="flex flex-col sm:flex-row gap-5">
 
         {/* Thumbnail */}
@@ -93,7 +103,7 @@ export default function ResultCard({
               {verdict.label.toUpperCase()}
             </span>
             <span className="text-xs text-garby-grey border border-white/10 px-2 py-0.5 rounded-full">
-              via {provider}
+              {providerLabel(provider)}
             </span>
           </div>
 
@@ -108,15 +118,19 @@ export default function ResultCard({
               style={{ width: `${barWidth}%` }}/>
           </div>
 
-          <div className="flex items-center gap-4 mt-3">
-            <span className="text-xs text-garby-grey flex items-center gap-1">
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
-              {(scanDurationMs / 1000).toFixed(2)}s scan time
+          <div className="flex items-center gap-4 mt-3 flex-wrap">
+            {(scanDurationMs ?? 0) > 0 && (
+              <span className="text-xs text-garby-grey flex items-center gap-1">
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                {durSec}s scan time
+              </span>
+            )}
+            <span className="text-xs text-garby-grey">
+              {providerLabel(provider)}
             </span>
-            <span className="text-xs text-garby-grey">{provider} model</span>
           </div>
         </div>
       </div>

@@ -1,9 +1,7 @@
 /**
- * ScanResultPage.tsx
- * Task: T-023 — Result Card
- * Task: T-024 — Signals Panel
- * Task: T-026 — Shareable Result Link
- * Task: T-028 — Garby Stamp (Sprint 2)
+ * ScanResultPage.tsx — Sprint 2
+ * Defensive rendering — handles all optional fields gracefully.
+ * Shows engine layer scores when available.
  */
 
 import { useEffect, useState } from 'react'
@@ -19,10 +17,11 @@ import type { ScanResult } from '@/types/scan'
 type PageState = 'loading' | 'ready' | 'not_found' | 'error'
 
 export default function ScanResultPage() {
-  const { id } = useParams<{ id: string }>()
+  const { id }  = useParams<{ id: string }>()
   const [scan, setScan]     = useState<ScanResult | null>(null)
   const [state, setState]   = useState<PageState>('loading')
   const [copied, setCopied] = useState(false)
+  const [error, setError]   = useState<string>('')
 
   useEffect(() => {
     if (!id) { setState('not_found'); return }
@@ -30,11 +29,18 @@ export default function ScanResultPage() {
     fetch(`${apiUrl}/api/scan/${id}`)
       .then(res => {
         if (res.status === 404) { setState('not_found'); return null }
-        if (!res.ok) throw new Error('Failed to load scan')
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
         return res.json()
       })
-      .then(json => { if (!json) return; setScan(json.data); setState('ready') })
-      .catch(() => setState('error'))
+      .then(json => {
+        if (!json) return
+        setScan(json.data)
+        setState('ready')
+      })
+      .catch(err => {
+        setError(err.message)
+        setState('error')
+      })
   }, [id])
 
   function handleCopyLink() {
@@ -44,6 +50,7 @@ export default function ScanResultPage() {
     })
   }
 
+  // ── Loading ───────────────────────────────────────────────────────────────
   if (state === 'loading') return (
     <div className="min-h-screen bg-garby-dark flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
@@ -72,11 +79,15 @@ export default function ScanResultPage() {
       <div className="text-center max-w-sm">
         <p className="section-label mb-3">Error</p>
         <h1 className="text-2xl font-bold text-white mb-3">Something went wrong</h1>
-        <p className="text-garby-grey text-sm mb-6">We couldn't load this scan result.</p>
+        <p className="text-garby-grey text-xs mb-6 font-mono">{error}</p>
         <Button variant="secondary" onClick={() => window.location.reload()}>Retry</Button>
       </div>
     </div>
   )
+
+  // Normalise duration field — backend uses both names
+  const scanDurationMs = scan.scan_duration_ms ?? scan.duration_ms ?? 0
+  const isVideo        = scan.media_type === 'video'
 
   return (
     <div className="min-h-screen bg-garby-dark text-white">
@@ -89,33 +100,27 @@ export default function ScanResultPage() {
             <p className="section-label mb-2">Scan Result</p>
             <h1 className="text-2xl font-bold">Authenticity Report</h1>
             <p className="text-garby-grey text-xs mt-1">
-              {new Date(scan.scanned_at).toLocaleString('en-GB', {
-                day: 'numeric', month: 'long', year: 'numeric',
-                hour: '2-digit', minute: '2-digit',
-              })}
+              {scan.scanned_at
+                ? new Date(scan.scanned_at).toLocaleString('en-GB', {
+                    day: 'numeric', month: 'long', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit',
+                  })
+                : '—'
+              }
             </p>
           </div>
           <Button variant="secondary" size="sm" onClick={handleCopyLink} className="shrink-0">
-            {copied ? (
-              <><svg className="w-3.5 h-3.5 text-garby-green" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
-              </svg>Copied!</>
-            ) : (
-              <><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
-              </svg>Share result</>
-            )}
+            {copied ? '✓ Copied!' : 'Share result'}
           </Button>
         </div>
 
-        {/* Result Card — T-023 / T-042 */}
-        {scan.media_type === 'video' && scan.frame_results ? (
+        {/* Result Card */}
+        {isVideo && scan.frame_results ? (
           <VideoResultCard
             classification={scan.classification}
             confidence={scan.confidence}
             provider={scan.provider}
-            scanDurationMs={scan.scan_duration_ms}
+            scanDurationMs={scanDurationMs}
             videoUrl={scan.image_url}
             durationSeconds={scan.duration_seconds ?? 0}
             framesAnalysed={scan.frames_analysed ?? 0}
@@ -126,16 +131,29 @@ export default function ScanResultPage() {
             classification={scan.classification}
             confidence={scan.confidence}
             provider={scan.provider}
-            scanDurationMs={scan.scan_duration_ms}
+            scanDurationMs={scanDurationMs}
             imageUrl={scan.image_url}
+            mediaType={scan.media_type ?? 'image'}
           />
         )}
 
-        {/* Signals Panel — T-024 */}
-        <SignalsPanel signals={scan.signals ?? []} classification={scan.classification} />
+        {/* Signals Panel */}
+        {scan.signals && scan.signals.length > 0 && (
+          <SignalsPanel
+            signals={scan.signals}
+            classification={scan.classification}
+          />
+        )}
 
-        {/* Garby Stamp — T-028 */}
-        <StampDownload scanId={scan.id} />
+        {/* Engine Layer Scores */}
+        {scan.engine_scores && (
+          <EngineScoresPanel scores={scan.engine_scores} />
+        )}
+
+        {/* Garby Stamp */}
+        {scan.classification === 'AI_GENERATED' && (
+          <StampDownload scanId={scan.id} />
+        )}
 
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-3 pt-2">
@@ -143,15 +161,64 @@ export default function ScanResultPage() {
             <Button fullWidth>Scan another image</Button>
           </Link>
           <Link to="/dashboard" className="flex-1">
-            <Button fullWidth variant="secondary">View scan history</Button>
+            <Button fullWidth variant="secondary">View history</Button>
           </Link>
         </div>
 
-        <p className="text-center text-xs text-garby-grey pt-2">
-          Scan ID: <span className="font-mono">{scan.id}</span>
+        <p className="text-center text-xs text-garby-grey pt-2 font-mono opacity-50">
+          {scan.id}
         </p>
 
       </div>
+    </div>
+  )
+}
+
+// ── Engine Scores Panel ───────────────────────────────────────────────────────
+
+const LAYER_LABELS: Record<string, string> = {
+  layer1_fft:      'L1 — Frequency (FFT)',
+  layer2_noise:    'L2 — Noise (PRNU)',
+  layer3_stats:    'L3 — Statistical (Benford)',
+  layer4_semantic: 'L4 — Semantic + Physical',
+  layer5_npr_dwt:  'L5 — NPR + DWT',
+}
+
+function EngineScoresPanel({ scores }: { scores: Record<string, number> }) {
+  return (
+    <div className="card border border-white/10">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-2 h-2 rounded-full bg-garby-cyan"/>
+        <h3 className="text-sm font-semibold text-white">Garby Engine — Layer Breakdown</h3>
+        <span className="text-xs text-garby-grey ml-auto">5-layer forensic analysis</span>
+      </div>
+      <div className="space-y-2.5">
+        {Object.entries(LAYER_LABELS).map(([key, label]) => {
+          const score = scores[key] ?? 0
+          const pct   = Math.round(score * 100)
+          const colour =
+            score >= 0.50 ? 'bg-red-500'    :
+            score >= 0.35 ? 'bg-yellow-500' : 'bg-garby-green'
+          return (
+            <div key={key}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-garby-grey">{label}</span>
+                <span className={`text-xs font-mono font-semibold ${
+                  score >= 0.50 ? 'text-red-400' :
+                  score >= 0.35 ? 'text-yellow-400' : 'text-garby-green'
+                }`}>{pct}%</span>
+              </div>
+              <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                <div className={`h-full rounded-full transition-all duration-700 ${colour}`}
+                  style={{ width: `${pct}%` }}/>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      <p className="text-xs text-garby-grey mt-3 opacity-60">
+        Scores above 50% indicate AI generation signals. Combined with Sightengine neural classifier.
+      </p>
     </div>
   )
 }

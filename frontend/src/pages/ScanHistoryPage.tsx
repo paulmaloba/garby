@@ -1,10 +1,6 @@
 /**
- * ScanHistoryPage.tsx
- * Task: T-025 — Scan History Page
- *
- * Shows the authenticated user's last 50 scans.
- * Paginated table with thumbnail, classification badge,
- * confidence score, date, and link to full result.
+ * ScanHistoryPage.tsx — Sprint 2
+ * Shows authenticated user's full scan history with pagination.
  */
 
 import { useEffect, useState } from 'react'
@@ -13,241 +9,199 @@ import Navbar from '@/components/Navbar'
 import Button from '@/components/ui/Button'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
-import type { ScanResult, Classification } from '@/types/scan'
+import type { ScanResult } from '@/types/scan'
 
-const PAGE_SIZE = 10
+function normalise(cls: string): 'AI_GENERATED' | 'REAL' | 'UNCERTAIN' {
+  const u = String(cls ?? '').toUpperCase().replace(/-/g, '_').replace(/ /g, '_')
+  if (u.includes('AI') || u.includes('GENERATED')) return 'AI_GENERATED'
+  if (u === 'REAL' || u.includes('LIKELY_REAL'))   return 'REAL'
+  return 'UNCERTAIN'
+}
 
-const BADGE: Record<Classification, { label: string; classes: string }> = {
-  AI_GENERATED: { label: 'AI Generated', classes: 'bg-red-500/20 text-red-400 border-red-500/30' },
-  REAL:         { label: 'Real',          classes: 'bg-garby-green/20 text-garby-green border-garby-green/30' },
-  UNCERTAIN:    { label: 'Uncertain',     classes: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
+const CLASS_STYLE = {
+  AI_GENERATED: { label: 'AI Generated', colour: 'text-red-400',    dot: 'bg-red-500'    },
+  REAL:         { label: 'Real',          colour: 'text-garby-green', dot: 'bg-garby-green' },
+  UNCERTAIN:    { label: 'Uncertain',     colour: 'text-yellow-400', dot: 'bg-yellow-500' },
+}
+
+function providerShort(p: string): string {
+  const s = (p ?? '').toLowerCase()
+  if (s.includes('garby') && s.includes('sightengine')) return 'Garby+SE'
+  if (s.includes('garby'))  return 'Garby'
+  if (s.includes('sight'))  return 'Sightengine'
+  return p ?? '—'
 }
 
 export default function ScanHistoryPage() {
   const { user } = useAuth()
+  const [scans,   setScans]   = useState<ScanResult[]>([])
+  const [loading, setLoading] = useState(true)
+  const [page,    setPage]    = useState(1)
+  const [total,   setTotal]   = useState(0)
+  const LIMIT = 20
 
-  const [scans, setScans]       = useState<ScanResult[]>([])
-  const [loading, setLoading]   = useState(true)
-  const [error, setError]       = useState<string | null>(null)
-  const [page, setPage]         = useState(0)
-  const [total, setTotal]       = useState(0)
-  const [filter, setFilter]     = useState<Classification | 'ALL'>('ALL')
-
-  const totalPages = Math.ceil(total / PAGE_SIZE)
-
-  // ── Fetch scans ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!user) return
-    fetchScans()
-  }, [user, page, filter])
+    loadHistory(page)
+  }, [user, page])
 
-  async function fetchScans() {
+  async function loadHistory(p: number) {
     setLoading(true)
-    setError(null)
-
     try {
-      let query = supabase
-        .from('scans')
-        .select('id, image_url, classification, confidence, provider, scan_duration_ms, scanned_at, status, signals', { count: 'exact' })
-        .eq('user_id', user!.id)
-        .eq('status', 'complete')
-        .order('scanned_at', { ascending: false })
-        .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1)
+      const { data: session } = await supabase.auth.getSession()
+      const token = session?.session?.access_token
+      if (!token) return
 
-      if (filter !== 'ALL') {
-        query = query.eq('classification', filter)
+      const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
+      const res    = await fetch(
+        `${apiUrl}/api/scan/history?page=${p}&limit=${LIMIT}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      const json = await res.json()
+      if (json.success) {
+        setScans(json.data)
+        setTotal(json.pagination?.total ?? 0)
       }
-
-      const { data, error: fetchError, count } = await query
-
-      if (fetchError) throw fetchError
-
-      setScans((data as ScanResult[]) ?? [])
-      setTotal(count ?? 0)
     } catch (err) {
-      setError('Failed to load scan history. Please try again.')
-      console.error('[ScanHistory]', err)
+      console.error('[History]', err)
     } finally {
       setLoading(false)
     }
   }
 
-  function formatDate(iso: string) {
-    return new Date(iso).toLocaleDateString('en-GB', {
-      day: 'numeric', month: 'short', year: 'numeric',
-      hour: '2-digit', minute: '2-digit',
-    })
-  }
+  const pages = Math.ceil(total / LIMIT)
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-garby-dark text-white">
       <Navbar />
+      <div className="max-w-4xl mx-auto px-4 pt-28 pb-16">
 
-      <div className="max-w-5xl mx-auto px-4 pt-28 pb-16 space-y-6">
-
-        {/* ── Header ──────────────────────────────────────────────────────── */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div className="flex items-center justify-between mb-8">
           <div>
             <p className="section-label mb-2">History</p>
-            <h1 className="text-3xl font-bold">Scan History</h1>
-            <p className="text-garby-grey text-sm mt-1">
-              {total > 0 ? `${total} completed scan${total !== 1 ? 's' : ''}` : 'No scans yet'}
-            </p>
+            <h1 className="text-2xl font-bold">Scan History</h1>
+            <p className="text-garby-grey text-sm mt-1">{total} scan{total !== 1 ? 's' : ''} total</p>
           </div>
-          <Link to="/scan">
-            <Button size="sm">New scan</Button>
-          </Link>
+          <Link to="/scan"><Button size="sm">New scan</Button></Link>
         </div>
 
-        {/* ── Filter bar ──────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {(['ALL', 'AI_GENERATED', 'REAL', 'UNCERTAIN'] as const).map(f => (
-            <button
-              key={f}
-              onClick={() => { setFilter(f); setPage(0) }}
-              className={`
-                text-xs font-semibold px-3 py-1.5 rounded-full border transition-all
-                ${filter === f
-                  ? 'bg-garby-green text-garby-dark border-garby-green'
-                  : 'bg-white/5 text-garby-grey border-white/10 hover:border-garby-green/40 hover:text-white'
-                }
-              `}
-            >
-              {f === 'ALL' ? 'All' : f === 'AI_GENERATED' ? 'AI Generated' : f === 'REAL' ? 'Real' : 'Uncertain'}
-            </button>
-          ))}
-        </div>
-
-        {/* ── Error ───────────────────────────────────────────────────────── */}
-        {error && (
-          <div className="px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-            {error}
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <svg viewBox="0 0 64 64" fill="none" className="w-8 h-8 animate-spin">
+              <path d="M56 32C56 45.255 45.255 56 32 56C18.745 56 8 45.255 8 32C8 18.745 18.745 8 32 8"
+                stroke="#2ECC71" strokeWidth="4" strokeLinecap="round"/>
+            </svg>
           </div>
-        )}
-
-        {/* ── Loading skeleton ─────────────────────────────────────────────── */}
-        {loading && (
-          <div className="space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="card flex items-center gap-4 animate-pulse">
-                <div className="w-12 h-12 rounded-lg bg-white/10 shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-3 bg-white/10 rounded w-1/3" />
-                  <div className="h-3 bg-white/10 rounded w-1/5" />
-                </div>
-                <div className="h-6 w-24 bg-white/10 rounded-full" />
-              </div>
-            ))}
+        ) : scans.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="text-garby-grey mb-4">No scans yet.</p>
+            <Link to="/scan"><Button>Scan your first image</Button></Link>
           </div>
-        )}
-
-        {/* ── Empty state ──────────────────────────────────────────────────── */}
-        {!loading && scans.length === 0 && (
-          <div className="card text-center py-16">
-            <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4">
-              <svg className="w-7 h-7 text-garby-grey" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-              </svg>
+        ) : (
+          <>
+            {/* Desktop table */}
+            <div className="hidden md:block rounded-xl border border-white/10 overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-garby-mid text-left">
+                    <th className="px-4 py-3 text-xs font-semibold text-garby-grey uppercase tracking-wider">Media</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-garby-grey uppercase tracking-wider">Result</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-garby-grey uppercase tracking-wider">Confidence</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-garby-grey uppercase tracking-wider">Provider</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-garby-grey uppercase tracking-wider">Date</th>
+                    <th className="px-4 py-3"/>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {scans.map(scan => {
+                    const cls     = normalise(scan.classification)
+                    const style   = CLASS_STYLE[cls]
+                    const dateStr = scan.scanned_at
+                      ? new Date(scan.scanned_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                      : '—'
+                    const pct = Math.round((scan.confidence ?? 0) * 100)
+                    return (
+                      <tr key={scan.id} className="hover:bg-white/[0.02] transition-colors">
+                        <td className="px-4 py-3">
+                          <div className="w-10 h-10 rounded-lg overflow-hidden border border-white/10 bg-white/5">
+                            {scan.media_type === 'video'
+                              ? <div className="w-full h-full flex items-center justify-center text-garby-grey text-xs">▶</div>
+                              : <img src={scan.image_url} alt="" className="w-full h-full object-cover"
+                                  onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}/>
+                            }
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${style.dot}`}/>
+                            <span className={`text-sm font-semibold ${style.colour}`}>{style.label}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-garby-grey font-mono">{pct}%</td>
+                        <td className="px-4 py-3 text-xs text-garby-grey">{providerShort(scan.provider)}</td>
+                        <td className="px-4 py-3 text-xs text-garby-grey">{dateStr}</td>
+                        <td className="px-4 py-3 text-right">
+                          <Link to={`/scan/${scan.id}`}
+                            className="text-xs text-garby-green hover:underline">
+                            View →
+                          </Link>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
-            <p className="font-semibold text-white mb-1">
-              {filter !== 'ALL' ? `No ${filter === 'AI_GENERATED' ? 'AI Generated' : filter.toLowerCase()} scans` : 'No scans yet'}
-            </p>
-            <p className="text-garby-grey text-sm mb-6">
-              {filter !== 'ALL' ? 'Try a different filter.' : 'Upload your first image to get started.'}
-            </p>
-            {filter === 'ALL' && (
-              <Link to="/scan">
-                <Button size="sm">Scan your first image</Button>
-              </Link>
-            )}
-          </div>
-        )}
 
-        {/* ── Scan list ────────────────────────────────────────────────────── */}
-        {!loading && scans.length > 0 && (
-          <div className="space-y-2">
-            {scans.map(scan => {
-              const badge = BADGE[scan.classification] ?? BADGE.UNCERTAIN
-              const pct   = Math.round((scan.confidence ?? 0) * 100)
-
-              return (
-                <Link
-                  key={scan.id}
-                  to={`/scan/${scan.id}`}
-                  className="card flex items-center gap-4 hover:border-garby-green/30 hover:bg-garby-green/[0.02] transition-all group cursor-pointer"
-                >
-                  {/* Thumbnail */}
-                  <div className="w-12 h-12 rounded-lg overflow-hidden border border-white/10 bg-white/5 shrink-0">
-                    {scan.image_url
-                      ? <img src={scan.image_url} alt="" className="w-full h-full object-cover" />
-                      : <div className="w-full h-full flex items-center justify-center">
-                          <svg className="w-5 h-5 text-garby-grey" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01"/>
-                          </svg>
-                        </div>
-                    }
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${badge.classes}`}>
-                        {badge.label}
-                      </span>
-                      <span className="text-xs font-mono text-garby-grey">
-                        {pct}% confidence
-                      </span>
+            {/* Mobile cards */}
+            <div className="md:hidden space-y-3">
+              {scans.map(scan => {
+                const cls   = normalise(scan.classification)
+                const style = CLASS_STYLE[cls]
+                const pct   = Math.round((scan.confidence ?? 0) * 100)
+                return (
+                  <Link key={scan.id} to={`/scan/${scan.id}`}
+                    className="card flex items-center gap-4 hover:border-white/20 transition-colors">
+                    <div className="w-12 h-12 rounded-lg overflow-hidden border border-white/10 shrink-0">
+                      <img src={scan.image_url} alt="" className="w-full h-full object-cover"
+                        onError={e => { (e.target as HTMLImageElement).style.display='none' }}/>
                     </div>
-                    <p className="text-xs text-garby-grey truncate">
-                      {scan.scanned_at ? formatDate(scan.scanned_at) : '—'}
-                      {' · '}
-                      {scan.provider ?? 'unknown'}
-                      {' · '}
-                      {((scan.scan_duration_ms ?? 0) / 1000).toFixed(2)}s
-                    </p>
-                  </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-1.5 h-1.5 rounded-full ${style.dot}`}/>
+                        <span className={`text-sm font-semibold ${style.colour}`}>{style.label}</span>
+                        <span className="text-xs text-garby-grey ml-auto">{pct}%</span>
+                      </div>
+                      <p className="text-xs text-garby-grey mt-1">
+                        {scan.scanned_at ? new Date(scan.scanned_at).toLocaleDateString() : '—'}
+                        {' · '}{providerShort(scan.provider)}
+                      </p>
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
 
-                  {/* Arrow */}
-                  <svg
-                    className="w-4 h-4 text-garby-grey group-hover:text-garby-green transition-colors shrink-0"
-                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
-                  </svg>
-                </Link>
-              )
-            })}
-          </div>
+            {/* Pagination */}
+            {pages > 1 && (
+              <div className="flex items-center justify-center gap-3 mt-8">
+                <Button variant="secondary" size="sm"
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}>
+                  ← Previous
+                </Button>
+                <span className="text-sm text-garby-grey">
+                  Page {page} of {pages}
+                </span>
+                <Button variant="secondary" size="sm"
+                  onClick={() => setPage(p => Math.min(pages, p + 1))}
+                  disabled={page === pages}>
+                  Next →
+                </Button>
+              </div>
+            )}
+          </>
         )}
-
-        {/* ── Pagination ───────────────────────────────────────────────────── */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between pt-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setPage(p => p - 1)}
-              disabled={page === 0}
-            >
-              ← Previous
-            </Button>
-            <span className="text-xs text-garby-grey">
-              Page {page + 1} of {totalPages}
-            </span>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setPage(p => p + 1)}
-              disabled={page >= totalPages - 1}
-            >
-              Next →
-            </Button>
-          </div>
-        )}
-
       </div>
     </div>
   )
