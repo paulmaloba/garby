@@ -3,7 +3,7 @@
  * Task: T-031 — Public access (no login required)
  * Task: T-032 — UI consistency pass
  * Task: T-037 — Detection error UX improvements
- * Sprint 2
+ * Sprint 2 session
  */
 
 import { useState } from 'react'
@@ -65,14 +65,30 @@ export default function ScanPage() {
       const headers: Record<string, string> = {}
 
       if (user) {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session?.access_token) {
-          headers['Authorization'] = `Bearer ${session.access_token}`
-        }
+          try {
+            const { data: { session } } = await supabase.auth.getSession()
+            if (session?.access_token) {
+              headers['Authorization'] = `Bearer ${session.access_token}`
+            }
+          } catch (error) {
+            console.error('Failed to retrieve Supabase session:', error)
+            // Optional: Handle the error appropriately (e.g., redirecting to login or setting fallback headers)
+          }
       } else {
         headers['X-Guest-Scans'] = String(guestScans.getCount())
         headers['X-Session-Id']  = getOrCreateSessionId()
       }
+
+//       if (user) {
+//         const { data: { session } } = await supabase.auth.getSession()
+//         if (session?.access_token) {
+//           headers['Authorization'] = `Bearer ${session.access_token}`
+//         }
+//       } else {
+//         headers['X-Guest-Scans'] = String(guestScans.getCount())
+//         headers['X-Session-Id']  = getOrCreateSessionId()
+//       }
+
 
       setScanState('scanning')
       setProgress(file.mediaType === 'video'
