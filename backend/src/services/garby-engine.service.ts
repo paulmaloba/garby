@@ -88,7 +88,8 @@ export async function analyseWithEngine(
     clearTimeout(timeout)
 
     if (!res.ok) {
-      console.warn(`[GarbyEngine] HTTP ${res.status} — engine unavailable`)
+      console.error(`[GarbyEngine] HTTP ${res.status} ${res.statusText} — engine returned an error`)
+      console.error(`[GarbyEngine] URL attempted: ${ENGINE_URL}/analyse`)
       return null
     }
 
@@ -96,12 +97,36 @@ export async function analyseWithEngine(
     return json.data
 
   } catch (err) {
-    const msg = (err as Error).message
-    if (msg.includes('abort') || msg.includes('timeout')) {
-      console.warn('[GarbyEngine] Timeout — engine took too long')
-    } else {
-      console.warn('[GarbyEngine] Error:', msg)
+    const targetUrl = `${ENGINE_URL}/analyse`
+    const error = err as NodeJS.ErrnoException
+
+    console.error(`[GarbyEngine] Fetch failed — URL attempted: ${targetUrl}`)
+    console.error(`[GarbyEngine] Error name   : ${error.name ?? 'unknown'}`)
+    console.error(`[GarbyEngine] Error message: ${error.message ?? 'no message'}`)
+
+    if (error.code) {
+      console.error(`[GarbyEngine] Error code   : ${error.code}`)
     }
+
+    if (error.code === 'ENOTFOUND') {
+      console.error('[GarbyEngine] DNS resolution failed — the hostname could not be resolved. ' +
+        'Check that the garby-engine service is deployed and that GARBY_ENGINE_URL is correct.')
+    } else if (error.code === 'ECONNREFUSED') {
+      console.error('[GarbyEngine] Connection refused — the host was reached but nothing is ' +
+        'listening on the target port. Verify garby-engine is running and bound to port 8080.')
+    } else if (error.code === 'ECONNRESET') {
+      console.error('[GarbyEngine] Connection reset — the remote server closed the connection ' +
+        'unexpectedly. The engine may have crashed or restarted mid-request.')
+    } else if (error.name === 'AbortError' || error.message?.includes('abort') || error.message?.includes('timeout')) {
+      console.error(`[GarbyEngine] Request timed out after ${ENGINE_TIMEOUT}ms — the engine is reachable but did not respond in time. Consider increasing ENGINE_TIMEOUT.`)
+    } else {
+      console.error('[GarbyEngine] Unexpected error type — see name/code/message above for details.')
+    }
+
+    if (error.stack) {
+      console.error(`[GarbyEngine] Stack trace  :\n${error.stack}`)
+    }
+
     return null
   }
 }
