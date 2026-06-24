@@ -96,12 +96,29 @@ export async function analyseWithEngine(
     return json.data
 
   } catch (err) {
-    const msg = (err as Error).message
-    if (msg.includes('abort') || msg.includes('timeout')) {
-      console.warn('[GarbyEngine] Timeout — engine took too long')
-    } else {
-      console.warn('[GarbyEngine] Error:', msg)
+    const error = err as Error & { code?: string }
+    const url   = `${ENGINE_URL}/analyse`
+
+    console.error(`[GarbyEngine] Fetch failed — URL: ${url}`)
+    console.error(`[GarbyEngine] Error type   : ${error.constructor?.name ?? 'Unknown'}`)
+    console.error(`[GarbyEngine] Error message: ${error.message}`)
+
+    if (error.code) {
+      console.error(`[GarbyEngine] Error code   : ${error.code}`)
     }
+
+    if (error.code === 'ENOTFOUND') {
+      console.error('[GarbyEngine] DNS resolution failed — the hostname could not be resolved. Check that the garby-engine service is deployed and the GARBY_ENGINE_URL is correct.')
+    } else if (error.code === 'ECONNREFUSED') {
+      console.error('[GarbyEngine] Connection refused — the engine is not accepting connections on the target port. Check that garby-engine is running and listening on port 8080.')
+    } else if (error.code === 'ECONNRESET') {
+      console.error('[GarbyEngine] Connection reset — the engine closed the connection unexpectedly.')
+    } else if (error.name === 'AbortError' || error.message.includes('abort') || error.message.includes('timeout')) {
+      console.error(`[GarbyEngine] Request timed out after ${ENGINE_TIMEOUT}ms — the engine is alive but took too long to respond.`)
+    } else {
+      console.error('[GarbyEngine] Unexpected network error — see type/message/code above for details.')
+    }
+
     return null
   }
 }
