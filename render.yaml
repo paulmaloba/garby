@@ -40,13 +40,17 @@ services:
     plan: starter
     region: oregon
     rootDir: backend
-    buildCommand: npm ci && node -e "console.log('TSC actually installed:', require('typescript').version)" && npm run build
+    buildCommand: npm ci && npm run build
     startCommand: npm run start
     healthCheckPath: /health
     autoDeploy: false   # deploys are triggered by CI (deploy hook) only after lint/test/build pass — see .github/workflows/ci-cd.yml
     envVars:
       - key: NODE_VERSION
         value: 20.11.1   # match CI's NODE_VERSION (ci-cd.yml) to avoid toolchain drift
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"   # NODE_ENV=production below makes npm skip devDependencies
+                          # (typescript, @types/*) at build time unless this is set —
+                          # this is what actually broke the last two deploys.
       - key: NODE_ENV
         value: production
       - key: ENGINE_TIMEOUT
