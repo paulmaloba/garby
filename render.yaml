@@ -1,0 +1,87 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# GARBY — Render Blueprint
+# Replaces Railway for the backend API and the Python detection engine.
+# The frontend is unaffected — it stays on Vercel (see frontend/vercel.json).
+#
+# How to deploy:
+#   1. Push this file to `main`.
+#   2. Render dashboard → New → Blueprint → select the garby repo.
+#      Render reads this file and provisions both services below.
+#   3. Every var marked `sync: false` is a secret — Render will prompt you
+#      to fill it in per-service in the dashboard. Nothing secret lives here.
+#   4. GARBY_ENGINE_URL is pre-wired to the deterministic Render URL of the
+#      engine service (https://<name>.onrender.com). If that name is already
+#      taken and Render suffixes it, update the value below to match and
+#      redeploy the backend service.
+# ══════════════════════════════════════════════════════════════════════════════
+
+services:
+  # ── Detection Engine — Python / FastAPI (5-layer model + trained classifier) ──
+  - type: web
+    name: garby-detection-engine
+    env: python
+    plan: standard          # numpy + scipy + scikit-learn + the 9MB model need
+                             # more headroom than the 512MB `starter` plan gives.
+                             # Drop to `starter` only if you've confirmed it fits.
+    region: oregon
+    rootDir: detection_engine
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: false   # deploys are triggered by CI (deploy hook) only after lint/test/build pass — see .github/workflows/ci-cd.yml
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+
+  # ── Backend API — Node / Express ─────────────────────────────────────────────
+  - type: web
+    name: garby-backend
+    env: node
+    plan: starter
+    region: oregon
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    healthCheckPath: /health
+    autoDeploy: false   # deploys are triggered by CI (deploy hook) only after lint/test/build pass — see .github/workflows/ci-cd.yml
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ENGINE_TIMEOUT
+        value: "90000"
+      # Deterministic Render URL of the engine service defined above —
+      # see the note at the top of this file if the name gets suffixed.
+      - key: GARBY_ENGINE_URL
+        value: https://garby-detection-engine.onrender.com
+
+      # ── Secrets — set real values in the Render dashboard, never here ──────
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: HIVE_API_KEY
+        sync: false
+      - key: SIGHTENGINE_USER
+        sync: false
+      - key: SIGHTENGINE_SECRET
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_S3_BUCKET
+        sync: false
+      - key: AWS_REGION
+        sync: false
+      - key: CDN_BASE_URL
+        sync: false
+      - key: CF_ACCOUNT_ID
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: FRONTEND_URL
+        sync: false

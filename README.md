@@ -15,7 +15,7 @@ Garby is an AI-powered SaaS platform that scans and classifies images and videos
 ```
 garby/
 ├── frontend/          # React + TypeScript + Vite + TailwindCSS (Vercel)
-├── backend/           # Node.js + Express + TypeScript (AWS EC2/ECS)
+├── backend/           # Node.js + Express + TypeScript (Render)
 ├── .github/
 │   ├── workflows/     # CI/CD — GitHub Actions
 │   └── PULL_REQUEST_TEMPLATE.md
@@ -35,7 +35,7 @@ garby/
 | Auth | Supabase Auth (JWT + OAuth2) |
 | Storage | AWS S3 / Cloudflare R2 |
 | Detection | Hive Moderation API + Sightengine (fallback) |
-| Hosting | Vercel (frontend) + AWS ECS (backend) |
+| Hosting | Vercel (frontend) + Render (backend + detection engine) |
 | CI/CD | GitHub Actions |
 
 ---
@@ -100,18 +100,39 @@ DATABASE_URL=your_supabase_postgres_url
 SUPABASE_URL=your_supabase_url
 SUPABASE_SERVICE_KEY=your_supabase_service_key
 HIVE_API_KEY=your_hive_api_key
+GARBY_ENGINE_URL=http://localhost:8001
+ENGINE_TIMEOUT=90000
 SIGHTENGINE_USER=your_sightengine_user
 SIGHTENGINE_SECRET=your_sightengine_secret
 AWS_ACCESS_KEY_ID=your_aws_key
 AWS_SECRET_ACCESS_KEY=your_aws_secret
 AWS_S3_BUCKET=garby-uploads
 AWS_REGION=us-east-1
+CDN_BASE_URL=your_r2_public_url
+CF_ACCOUNT_ID=your_cloudflare_account_id
 REDIS_URL=your_redis_url
 JWT_SECRET=your_jwt_secret
 FRONTEND_URL=http://localhost:5173
 ```
 
-> ⚠️ **NEVER commit `.env` files. All secrets must go through GitHub Actions Secrets or Vercel environment variables.**
+> ⚠️ **NEVER commit `.env` files. All secrets must go through GitHub Actions Secrets or the Render dashboard.**
+
+---
+
+## Deployment
+
+| Service | Platform | Config |
+|---|---|---|
+| Frontend | Vercel | `frontend/vercel.json` |
+| Backend API | Render | `render.yaml` (Blueprint, repo root) |
+| Detection Engine | Render | `render.yaml` (Blueprint, repo root) |
+
+Backend and detection-engine hosting moved from Railway to Render (see `render.yaml`). To stand the services up for the first time:
+
+1. Push `render.yaml` to `main`.
+2. Render dashboard → **New** → **Blueprint** → select this repo. Render provisions `garby-backend` and `garby-detection-engine` from the file automatically.
+3. Fill in every variable marked `sync: false` in the blueprint (all real secrets) under each service's **Environment** tab in the Render dashboard — none of them live in the repo.
+4. Confirm `GARBY_ENGINE_URL` on `garby-backend` matches the actual deployed URL of `garby-detection-engine` (Render appends a suffix if the plain name is already taken).
 
 ---
 
@@ -141,7 +162,7 @@ FRONTEND_URL=http://localhost:5173
 | T-001 | Initialise Monorepo | ✅ DONE |
 | T-002 | Frontend Scaffold | ✅ DONE |
 | T-003 | Backend Scaffold | ✅ DONE |
-| T-004 | Database Setup | 🔲 TO DO |
+| T-004 | Database Setup | ✅ DONE |
 | T-005 | CI/CD Pipeline | ✅ DONE |
 | T-006 | Environment Configuration | ✅ DONE |
 
