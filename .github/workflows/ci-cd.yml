@@ -122,7 +122,11 @@ jobs:
           working-directory: ./frontend
           alias-domains: staging.garby.app
 
-      # Backend deploy step — add AWS ECS deployment here in Sprint 2
+      - name: Deploy backend + engine to Render (Staging)
+        if: ${{ secrets.RENDER_DEPLOY_HOOK_BACKEND_STAGING != '' }}
+        run: |
+          curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_BACKEND_STAGING }}"
+          curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_ENGINE_STAGING }}"
 
   # ── Deploy Production ──────────────────────────────────────────────────────
   deploy-production:
@@ -145,4 +149,8 @@ jobs:
           vercel-args: '--prod'
           working-directory: ./frontend
 
-      # Backend deploy step — add AWS ECS deployment here in Sprint 2
+      - name: Deploy backend + engine to Render (Production)
+        if: ${{ secrets.RENDER_DEPLOY_HOOK_BACKEND != '' }}
+        run: |
+          curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_BACKEND }}"
+          curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_ENGINE }}"
