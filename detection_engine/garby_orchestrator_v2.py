@@ -4,25 +4,28 @@ Garby Detection Engine — Master Orchestrator v2
 Trained model integration.
 
 When garby_model.pkl is present in the same directory, detect_trained()
-uses the meta-classifier trained on 13,825 images (6,918 real + 6,907 AI).
+uses the meta-classifier described below. The 13,825-image figure (6,918
+real + 6,907 AI) is the ORIGINAL training set size and is now stale — the
+model was retrained on more data after that run (see note below); the
+current, larger training set size has not been recorded here.
 
-Trained model stats (CORRECTED 30 Aug 2026 — see note below):
+Trained model stats (CORRECTED 30 Aug 2026 — confirmed with the team):
   Test Accuracy : 89.06%
   Test AUC      : 0.9516
   Optimal threshold: 0.65
 
-  ⚠ This docstring previously claimed Test Accuracy 98.02% / AUC 0.9972 /
-  2.0% false positives / 1.9% false negatives. Those numbers do not match
-  what garby_model.pkl actually reports about itself — the Render engine's
-  startup log prints the bundle's own embedded metadata every boot
-  ("[GarbyEngine] Trained model loaded — AUC=... Acc=...") and it has
-  consistently read AUC=0.9516 / Acc=0.8906, both before and after fixing
-  an unrelated scikit-learn version mismatch that was ruled out as the
-  cause. Whether this docstring described an earlier/different model.pkl
-  that was later swapped, or was simply aspirational, is unknown — treat
-  the accuracy/AUC above as the only verified figures until someone
-  re-derives real numbers from a held-out set against the exact deployed
-  model.pkl.
+  This docstring previously claimed Test Accuracy 98.02% / AUC 0.9972 /
+  2.0% false positives / 1.9% false negatives. Confirmed cause: those were
+  the ORIGINAL model's stats on the 13,825-image set above. The model was
+  later retrained on more images, and accuracy dropped to what's now
+  garby_model.pkl's actual embedded metadata (AUC=0.9516 / Acc=0.8906,
+  read directly from the bundle at every engine startup, unaffected by an
+  unrelated scikit-learn version mismatch that was fixed the same day).
+  This is expected to happen sometimes when a larger/more diverse training
+  set surfaces harder cases the smaller set didn't have — it is not
+  necessarily a regression, but it does mean the 98%/0.997 figures are
+  retired and should not be used anywhere (pricing page, investor
+  materials, etc.) until a fresh evaluation of the current model exists.
 
   The false-positive/false-negative rates and the layer-weight breakdown
   below have NOT been independently re-verified against the currently
