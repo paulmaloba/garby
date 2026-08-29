@@ -3,18 +3,34 @@ Garby Detection Engine — Master Orchestrator v2
 ================================================
 Trained model integration.
 
-When garby_model.pkl is present in the same directory,
-detect_trained() uses the 98% accurate meta-classifier trained
-on 13,825 images (6,918 real + 6,907 AI).
+When garby_model.pkl is present in the same directory, detect_trained()
+uses the meta-classifier trained on 13,825 images (6,918 real + 6,907 AI).
 
-Trained model stats:
-  Test Accuracy : 98.02%
-  Test AUC      : 0.9972
-  False positives: 2.0%  (real wrongly flagged as AI)
-  False negatives: 1.9%  (AI images missed)
+Trained model stats (CORRECTED 30 Aug 2026 — see note below):
+  Test Accuracy : 89.06%
+  Test AUC      : 0.9516
   Optimal threshold: 0.65
 
-Learned layer weights (from training data, not hand-tuned):
+  ⚠ This docstring previously claimed Test Accuracy 98.02% / AUC 0.9972 /
+  2.0% false positives / 1.9% false negatives. Those numbers do not match
+  what garby_model.pkl actually reports about itself — the Render engine's
+  startup log prints the bundle's own embedded metadata every boot
+  ("[GarbyEngine] Trained model loaded — AUC=... Acc=...") and it has
+  consistently read AUC=0.9516 / Acc=0.8906, both before and after fixing
+  an unrelated scikit-learn version mismatch that was ruled out as the
+  cause. Whether this docstring described an earlier/different model.pkl
+  that was later swapped, or was simply aspirational, is unknown — treat
+  the accuracy/AUC above as the only verified figures until someone
+  re-derives real numbers from a held-out set against the exact deployed
+  model.pkl.
+
+  The false-positive/false-negative rates and the layer-weight breakdown
+  below have NOT been independently re-verified against the currently
+  deployed model.pkl — they may be stale from whatever run originally
+  produced this docstring. Do not cite them externally (pricing page,
+  investor materials, etc.) without re-confirming against the live bundle.
+
+Layer weights as originally documented (UNVERIFIED — see warning above):
   L1 FFT Spectral : 44.9%  ← dominant signal
   L5 NPR+DWT      : 25.4%
   L4 Semantic     : 18.6%
@@ -151,7 +167,7 @@ def count_agreeing_layers(layer_verdicts, final_verdict):
 # ── PRIMARY: Trained model detection ──────────────────────────────────────────
 def detect_trained(image_path: str, verbose: bool = False) -> GarbyResult:
     """
-    Run detection using the trained meta-classifier (98% accuracy).
+    Run detection using the trained meta-classifier (see module docstring for verified accuracy).
     Falls back to rule-based detect() if garby_model.pkl is not present.
     """
     bundle = _load_model()
