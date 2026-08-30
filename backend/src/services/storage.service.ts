@@ -20,7 +20,9 @@ const s3 = new S3({
   accessKeyId:      process.env.AWS_ACCESS_KEY_ID,
   secretAccessKey:  process.env.AWS_SECRET_ACCESS_KEY,
   endpoint:         R2_ENDPOINT,
-  region:           'us-east-1',        // aws-sdk v2 requires a real region string even for R2
+  region:           'auto',             // R2's S3-compatible API requires 'auto' for SigV4 signing —
+                                         // 'us-east-1' produces a valid-looking request that R2 rejects
+                                         // with SignatureDoesNotMatch, since region is part of the signed scope
   signatureVersion: 'v4',
   s3ForcePathStyle: true,               // required for R2 path-style bucket access
 })
