@@ -65,15 +65,18 @@ export async function createScan(
     const userId    = (req as any).user?.id ?? null
     const sessionId = (req.headers['x-session-id'] as string) ?? null
 
-    await supabase.from('scans').insert({
+    const { error: insertError } = await supabase.from('scans').insert({
       id: scanId, user_id: userId, session_id: sessionId,
       image_url: upload.url, media_type: mediaType, status: 'processing',
     })
+    if (insertError) {
+      throw new Error(`Failed to record scan in database: ${insertError.message}`)
+    }
 
     if (isVideo) {
       const result = await runVideoDetection(buffer, mimetype, upload.url)
 
-      await supabase.from('scans').update({
+      const { error: updateError } = await supabase.from('scans').update({
         classification:   result.classification,
         confidence:       result.confidence,
         provider:         result.provider,
@@ -85,6 +88,9 @@ export async function createScan(
         status:           'complete',
         scanned_at:       new Date().toISOString(),
       }).eq('id', scanId)
+      if (updateError) {
+        console.error(`[Scan] Failed to persist video result for ${scanId}:`, updateError.message)
+      }
 
       console.log(`[Scan] Video ${scanId} complete — ${result.classification} (${result.frames_analysed} frames)`)
       res.status(200).json({
@@ -100,7 +106,7 @@ export async function createScan(
     } else {
       const result = await runDetection(buffer, mimetype, upload.url)
 
-      await supabase.from('scans').update({
+      const { error: updateError } = await supabase.from('scans').update({
         classification:   result.classification,
         confidence:       result.confidence,
         provider:         result.provider,
@@ -110,6 +116,9 @@ export async function createScan(
         status:           'complete',
         scanned_at:       new Date().toISOString(),
       }).eq('id', scanId)
+      if (updateError) {
+        console.error(`[Scan] Failed to persist image result for ${scanId}:`, updateError.message)
+      }
 
       console.log(`[Scan] Image ${scanId} complete — ${result.classification} ${(result.confidence * 100).toFixed(1)}%`)
       res.status(200).json({

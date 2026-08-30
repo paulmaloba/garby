@@ -19,9 +19,10 @@ export function errorHandler(
   const message = err.message ?? 'Internal server error'
   const code    = err.code    ?? 'INTERNAL_ERROR'
 
-  if (process.env.NODE_ENV !== 'production') {
-    console.error(`[ERROR] ${status} — ${message}`, err.stack)
-  }
+  // Always log server-side — production is exactly when you need this in
+  // the platform's log viewer (Render, etc.). Only the CLIENT-facing
+  // response below hides the stack trace in production.
+  console.error(`[ERROR] ${status} — ${message}`, err.stack)
 
   res.status(status).json({
     success: false,
