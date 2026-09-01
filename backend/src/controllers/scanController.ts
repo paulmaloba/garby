@@ -62,7 +62,7 @@ export async function createScan(
     const upload = await uploadImageToS3(buffer, mimetype, originalname)
     s3Key = upload.key
 
-    const userId    = (req as any).user?.id ?? null
+    const userId    = req.user?.id ?? null
     const sessionId = (req.headers['x-session-id'] as string) ?? null
 
     await supabase.from('scans').insert({
