@@ -150,8 +150,9 @@ export default function ScanResultPage() {
           <EngineScoresPanel scores={scan.engine_scores} />
         )}
 
-        {/* Garby Stamp */}
-        {scan.classification === 'AI_GENERATED' && (
+        {/* Garby Stamp — available for both AI-generated and real results;
+            UNCERTAIN is excluded since there's no verified classification to certify */}
+        {(scan.classification === 'AI_GENERATED' || scan.classification === 'REAL') && (
           <StampDownload scanId={scan.id} />
         )}
 

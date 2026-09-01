@@ -106,8 +106,11 @@ async function borderStamp(
   const qrSize     = Math.round(footerH * 0.80)
   const qrMargin   = Math.round((footerH - qrSize) / 2)
 
-  // Generate QR code pointing to full scan report
-  const scanUrl  = `https://garby.app/scan/${scanId}`
+  // Generate QR code pointing to full scan report.
+  // FRONTEND_URL is the same env var app.ts uses for CORS — keeps this in
+  // sync with wherever the frontend actually lives instead of a hardcoded
+  // domain (garby.app was never DNS-wired to anything).
+  const scanUrl  = `${process.env.FRONTEND_URL ?? 'https://garby-frontend.onrender.com'}/scan/${scanId}`
   const qrBuffer = await QRCode.toBuffer(scanUrl, {
     type:             'png',
     width:            qrSize,
