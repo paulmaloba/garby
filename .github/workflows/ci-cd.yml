@@ -113,15 +113,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Deploy frontend to Vercel (Staging)
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: ./frontend
-          alias-domains: staging.garby.app
-
+      # Frontend has no staging static site on Render yet — only production
+      # (garby-frontend) exists. Add one and a matching deploy hook here if
+      # a staging frontend is ever needed.
       - name: Deploy backend + engine to Render (Staging)
         if: ${{ secrets.RENDER_DEPLOY_HOOK_BACKEND_STAGING != '' }}
         run: |
@@ -140,15 +134,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Deploy frontend to Vercel (Production)
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
-          working-directory: ./frontend
-
+      # Frontend (garby-frontend, a Render static site) has autoDeploy on and
+      # tracks `main` directly — Render builds and deploys it on this same
+      # push without any action needed here. See render.yaml.
       - name: Deploy backend + engine to Render (Production)
         if: ${{ secrets.RENDER_DEPLOY_HOOK_BACKEND != '' }}
         run: |
