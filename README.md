@@ -35,7 +35,7 @@ garby/
 | Auth | Supabase Auth (JWT + OAuth2) |
 | Storage | AWS S3 / Cloudflare R2 |
 | Detection | Hive Moderation API + Sightengine (fallback) |
-| Hosting | Vercel (frontend) + Render (backend + detection engine) |
+| Hosting | Render (frontend + backend + detection engine) |
 | CI/CD | GitHub Actions |
 
 ---
@@ -123,16 +123,16 @@ FRONTEND_URL=http://localhost:5173
 
 | Service | Platform | Config |
 |---|---|---|
-| Frontend | Vercel | `frontend/vercel.json` |
+| Frontend | Render (static site) | `render.yaml` (Blueprint, repo root) |
 | Backend API | Render | `render.yaml` (Blueprint, repo root) |
 | Detection Engine | Render | `render.yaml` (Blueprint, repo root) |
 
-Backend and detection-engine hosting moved from Railway to Render (see `render.yaml`). To stand the services up for the first time:
+All three pieces run on Render (see `render.yaml`) — backend and detection-engine moved from Railway first, and the frontend moved off Vercel afterward for the same reason: cross-provider setups had repeatedly caused reachability problems, and putting everything on one host fixed it. No custom domain was ever DNS-wired to the old Vercel deployment, so the frontend move was hosting-only, not a DNS migration. To stand the services up for the first time:
 
 1. Push `render.yaml` to `main`.
-2. Render dashboard → **New** → **Blueprint** → select this repo. Render provisions `garby-backend` and `garby-detection-engine` from the file automatically.
+2. Render dashboard → **New** → **Blueprint** → select this repo. Render provisions `garby-frontend`, `garby-backend`, and `garby-detection-engine` from the file automatically.
 3. Fill in every variable marked `sync: false` in the blueprint (all real secrets) under each service's **Environment** tab in the Render dashboard — none of them live in the repo.
-4. Confirm `GARBY_ENGINE_URL` on `garby-backend` matches the actual deployed URL of `garby-detection-engine` (Render appends a suffix if the plain name is already taken).
+4. Confirm `GARBY_ENGINE_URL` (on `garby-backend`) and `FRONTEND_URL`/`VITE_API_URL` (cross-wired between `garby-backend` and `garby-frontend`) match the actual deployed URLs — Render appends a suffix if a plain name is already taken.
 
 ---
 
